@@ -7,3 +7,6 @@ __pycache__/
 *.wav
 *.ogg
 *.flac
+
+# python build metadata
+*.egg-info/

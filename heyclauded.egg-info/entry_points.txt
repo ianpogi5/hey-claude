@@ -1,2 +1,0 @@
-[console_scripts]
-heyclauded = heyclauded.__main__:main
