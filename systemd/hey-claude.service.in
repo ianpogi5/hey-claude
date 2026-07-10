@@ -1,0 +1,11 @@
+[Unit]
+Description=hey-claude — push-to-talk Claude voice assistant daemon
+
+[Service]
+Type=dbus
+BusName=org.kdc.HeyClaude
+ExecStart=@HEYCLAUDED@
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

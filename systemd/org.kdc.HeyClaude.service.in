@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.kdc.HeyClaude
+Exec=@HEYCLAUDED@
+SystemdService=hey-claude.service

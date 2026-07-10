@@ -23,11 +23,10 @@ loud. Low friction, desktop-native, everything local except the Claude API call.
 2. **Keybinding mechanism** — extension-registered keybinding (simplest, works
    today) vs XDG GlobalShortcuts portal (survives without the extension, more
    moving parts). Start with the extension keybinding.
-3. **Session model** — one long-lived `claude` session resumed forever, vs
-   "new conversation" menu action that rotates the session id. Probably both:
-   resume by default, menu item to start fresh.
-4. **Interruption** — should speaking stop when you press PTT again? (Probably
-   yes: barge-in = cancel TTS + start recording.)
+3. **Session model** — ~~open~~ **Resolved: both.** The daemon resumes the
+   saved session by default; `NewConversation()` rotates it.
+4. **Interruption** — ~~open~~ **Resolved: barge-in.** `Toggle()` while
+   speaking kills playback and starts recording.
 5. **Coexistence with the existing Stop hook** — ~~open~~ **Resolved: detect
    and skip.** `~/.claude/hooks/speak-response.sh` now exits early when
    `HEY_CLAUDE_SUPPRESS_TTS=1`, which the pipeline sets in the environment of
@@ -50,7 +49,7 @@ State machine: `idle → recording → transcribing → thinking → speaking �
   the cleanup logic (extract it into the daemon).
 - **D-Bus:** own `org.kdc.HeyClaude` on the session bus.
   - Methods: `Toggle()`, `StartListening()`, `StopListening()`, `Cancel()`,
-    `NewConversation()`
+    `NewConversation()`, `Ask(s text)` (text entry / testing), `Quit()`
   - Signals: `StateChanged(s state)`, `Transcript(s who, s text)`
   - Properties: `State`, `SessionId`
 - **Config:** `~/.config/hey-claude/config.toml` (model paths, claude args,
@@ -80,8 +79,15 @@ State machine: `idle → recording → transcribing → thinking → speaking �
   TTS ~2 s. `claude -p` dominates latency → M2/M4 must add instant earcon
   feedback and look at streaming. Still to do: live-mic run + the "what lights
   are on?" HA test.
-- **M2 — daemon.** Proper state machine, D-Bus interface, systemd user service,
-  config file. Controllable entirely with `gdbus call`.
+- **M2 — daemon.** ✅ Done 2026-07-11: `heyclauded` package (asyncio +
+  dbus-fast), full state machine incl. barge-in, warm Whisper model, earcons,
+  TOML config, systemd user unit + D-Bus activation
+  (`scripts/install-daemon.sh`). Verified over `gdbus`: Ask, Toggle w/ silent
+  mic (VAD → idle), Cancel mid-thinking, NewConversation, Quit, activation
+  from cold. Notes: dbus-broker needs `ReloadConfig` to see new service files;
+  systemd user env lacks `~/.local/bin` so the claude binary is resolved
+  explicitly. Silence auto-stop deferred to M4 (safety cap:
+  `max_record_seconds`).
 - **M3 — extension.** Top-bar indicator + keybinding wired to the daemon.
   This is the "it's a real app" moment.
 - **M4 — polish.** Barge-in, transcript window/notifications, settings UI

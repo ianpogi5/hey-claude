@@ -1,3 +1,16 @@
+Metadata-Version: 2.4
+Name: heyclauded
+Version: 0.2.0
+Summary: Push-to-talk voice assistant daemon for GNOME that talks to Claude Code
+License-Expression: Apache-2.0
+Project-URL: Homepage, https://github.com/ianpogi5/hey-claude
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: faster-whisper>=1.0
+Requires-Dist: dbus-fast>=2.0
+Dynamic: license-file
+
 # hey-claude
 
 Push-to-talk voice conversations with Claude Code, native to the GNOME desktop.
@@ -6,9 +19,7 @@ A small top-bar indicator (GNOME Shell extension) drives a background daemon tha
 records your voice, transcribes it locally, sends it to the `claude` CLI, and speaks
 the reply aloud with Piper TTS.
 
-**Status:** M2 — the daemon works: push-to-talk over D-Bus, systemd user
-service, config file. The GNOME top-bar extension (M3) is next. See
-[PLAN.md](PLAN.md).
+**Status:** planning. See [PLAN.md](PLAN.md).
 
 ## Why
 
@@ -33,6 +44,11 @@ service, config file. The GNOME top-bar extension (M3) is next. See
 
 ## Install
 
+What's usable today is the **M1 pipeline script**: the full voice loop
+(record → transcribe → Claude → spoken reply) in one command, no daemon or
+top-bar UI yet. The daemon and GNOME extension are milestones M2/M3 in
+[PLAN.md](PLAN.md).
+
 ### Prerequisites
 
 - Linux with PipeWire and PulseAudio utilities — you need `pw-record` and
@@ -40,7 +56,7 @@ service, config file. The GNOME top-bar extension (M3) is next. See
   (Debian/Ubuntu: `apt install pipewire-bin pulseaudio-utils`).
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and
   logged in — `claude` must work in your terminal.
-- Python 3.11+ (tested on 3.14) with the `venv` module.
+- Python 3.10+ (tested on 3.14) with the `venv` module.
 - A working microphone and speakers.
 
 ### Setup
@@ -50,7 +66,7 @@ git clone https://github.com/ianpogi5/hey-claude.git
 cd hey-claude
 
 python3 -m venv .venv
-.venv/bin/pip install -e . piper-tts
+.venv/bin/pip install faster-whisper piper-tts
 
 # Download a TTS voice (~60 MB, one time). Browse voices at
 # https://rhasspy.github.io/piper-samples/
@@ -61,56 +77,30 @@ export HEY_CLAUDE_PIPER_MODEL=$PWD/voices/en_US-amy-medium.onnx
 
 If you already have Piper elsewhere, skip the download and point
 `HEY_CLAUDE_PIPER` (binary) and `HEY_CLAUDE_PIPER_MODEL` (voice `.onnx`)
-at your install. To make settings permanent (voice path, whisper model,
-Claude tool restrictions, audio device …), copy
-[config.example.toml](config.example.toml) to
-`~/.config/hey-claude/config.toml` and edit.
+at your install.
 
-### Run the daemon
+### Use
 
 ```bash
-./scripts/install-daemon.sh
+.venv/bin/python scripts/m1-pipeline.py
 ```
 
-That installs a systemd user service plus D-Bus activation: the daemon starts
-on demand at the first call and keeps the Whisper model warm between
-questions. Push-to-talk is one D-Bus call — press once, speak, press again:
+Speak your question, press Enter to stop recording, and the reply is read
+aloud. The first run downloads the Whisper `small` model (~460 MB) from
+Hugging Face; later runs start instantly.
 
-```bash
-gdbus call --session --dest org.kdc.HeyClaude \
-    --object-path /org/kdc/HeyClaude --method org.kdc.HeyClaude.Toggle
-```
+Useful flags:
 
-Until the GNOME extension (M3) lands, bind that command to a key: GNOME
-Settings → Keyboard → Custom Shortcuts, command
-`gdbus call --session --dest org.kdc.HeyClaude --object-path /org/kdc/HeyClaude --method org.kdc.HeyClaude.Toggle`,
-key e.g. `Super+Space`. You get a beep when it starts listening, a lower beep
-when it stops, and the answer is read aloud. Pressing the key while Claude is
-speaking interrupts and listens again (barge-in).
-
-The rest of the interface, for scripts and the future extension:
-
-| D-Bus | Purpose |
+| Flag | Effect |
 |---|---|
-| `Toggle()` | push-to-talk: start/stop recording, or interrupt speech |
-| `Ask(s text)` | skip the microphone, send text through the same pipeline |
-| `Cancel()` | abandon whatever is happening, back to idle |
-| `NewConversation()` | forget the session, start fresh next question |
-| `Quit()` | stop the daemon (D-Bus activation restarts it on demand) |
-| `StateChanged(s)` / `Transcript(s,s)` signals | drive UIs: idle/recording/transcribing/thinking/speaking; what you said and what Claude replied |
+| `--seconds 5` | record a fixed duration instead of Enter-to-stop |
+| `--new` | start a fresh Claude session (default resumes the last one) |
+| `--text "…"` | skip the microphone and send text (pipeline smoke test) |
+| `--model base` | smaller/faster Whisper model, slightly less accurate |
 
-The first question after install downloads the Whisper `small` model
-(~460 MB) from Hugging Face; after that the model loads from disk at daemon
-start. Conversations persist across questions and daemon restarts (session id
-in `~/.local/state/hey-claude/session-id`); Claude Code's own permission
+Conversations continue across runs: the session id is kept in
+`~/.local/state/hey-claude/session-id`, and Claude Code's own permission
 prompts still apply to anything the session tries to do.
-
-### One-shot script (no daemon)
-
-`scripts/m1-pipeline.py` is the original milestone-1 proof: the same loop as
-a single foreground command, printing per-stage timings — useful for testing
-your audio/STT setup. `--text "…"` skips the microphone, `--new` starts a
-fresh session, `--seconds 5` records a fixed duration.
 
 ## Security & privacy
 

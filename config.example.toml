@@ -1,0 +1,26 @@
+# hey-claude daemon configuration.
+# Copy to ~/.config/hey-claude/config.toml — every key is optional;
+# omitted or empty values keep the built-in default shown here.
+
+[stt]
+model = "small"      # faster-whisper model: tiny / base / small / medium
+compute = "int8"     # ctranslate2 compute type
+language = "en"
+preload = true       # load the whisper model at startup, not first use
+
+[audio]
+target = ""              # pw-record --target (empty = default microphone)
+max_record_seconds = 60  # safety stop for a toggle you forgot about
+earcons = true           # feedback tones on listen/stop/error
+
+[claude]
+bin = "claude"
+# Extra args for every `claude -p` call. Restrict what a voice session may
+# touch, e.g.: args = ["--allowedTools", "mcp__home-assistant"]
+args = []
+cwd = ""             # working directory for claude (empty = daemon's cwd)
+
+[tts]
+piper = ""           # piper binary (default: $HEY_CLAUDE_PIPER, ~/.claude/tts, or venv)
+voice = ""           # voice .onnx path (default: $HEY_CLAUDE_PIPER_MODEL or ~/.claude/tts)
+speech_limit = 1200  # max characters spoken; longer replies get truncated
