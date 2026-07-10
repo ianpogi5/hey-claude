@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 *.zip
+
+# never commit voice recordings or audio scratch files
+*.wav
+*.ogg
+*.flac

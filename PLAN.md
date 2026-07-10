@@ -16,10 +16,10 @@ loud. Low friction, desktop-native, everything local except the Claude API call.
 
 ## Decisions still open
 
-1. **STT engine** — `faster-whisper` (Python, easy streaming, CTranslate2) vs
-   `whisper.cpp` (C++, lighter deps, needs subprocess wrapper). Leaning
-   faster-whisper with `small`/`base` model; benchmark both on this machine
-   (no GPU assumptions).
+1. **STT engine** — ~~faster-whisper vs whisper.cpp~~ **Resolved: faster-whisper.**
+   Installs clean on Python 3.14; `small`/int8 on CPU transcribes a short
+   utterance in ~1.5 s with perfect accuracy (M1 test). Keep the model warm in
+   the daemon to hide the ~2 s load. Revisit only if daemon RSS is a problem.
 2. **Keybinding mechanism** — extension-registered keybinding (simplest, works
    today) vs XDG GlobalShortcuts portal (survives without the extension, more
    moving parts). Start with the extension keybinding.
@@ -28,10 +28,10 @@ loud. Low friction, desktop-native, everything local except the Claude API call.
    resume by default, menu item to start fresh.
 4. **Interruption** — should speaking stop when you press PTT again? (Probably
    yes: barge-in = cancel TTS + start recording.)
-5. **Coexistence with the existing Stop hook** — the user's global Stop hook
-   already speaks responses in terminal sessions. The daemon must not
-   double-speak: run `claude -p` with hooks disabled for its sessions, or
-   detect and skip.
+5. **Coexistence with the existing Stop hook** — ~~open~~ **Resolved: detect
+   and skip.** `~/.claude/hooks/speak-response.sh` now exits early when
+   `HEY_CLAUDE_SUPPRESS_TTS=1`, which the pipeline sets in the environment of
+   every `claude -p` it spawns.
 
 ## Components
 
@@ -73,10 +73,13 @@ State machine: `idle → recording → transcribing → thinking → speaking �
 
 ## Milestones
 
-- **M1 — pipeline proof, no UI.** A single script: record N seconds → STT →
-  `claude -p` → Piper speaks. Validates latency and the STT choice. Exit
-  criterion: ask "what lights are on?" and hear a correct answer (via the HA
-  MCP server) in acceptable time.
+- **M1 — pipeline proof, no UI.** ✅ Done: `scripts/m1-pipeline.py` (record →
+  STT → `claude -p` → Piper, with per-stage timings and session resume via
+  `~/.local/state/hey-claude/session-id`). Verified end-to-end 2026-07-11 with
+  a Piper-synthesized question: transcribe 1.5 s, `claude -p` ~14 s (warm),
+  TTS ~2 s. `claude -p` dominates latency → M2/M4 must add instant earcon
+  feedback and look at streaming. Still to do: live-mic run + the "what lights
+  are on?" HA test.
 - **M2 — daemon.** Proper state machine, D-Bus interface, systemd user service,
   config file. Controllable entirely with `gdbus call`.
 - **M3 — extension.** Top-bar indicator + keybinding wired to the daemon.

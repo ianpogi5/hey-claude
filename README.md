@@ -29,6 +29,29 @@ the reply aloud with Piper TTS.
 └────────────────────────┘            └──────────────────────────────┘
 ```
 
+## Security & privacy
+
+This assistant runs commands with **your** user account and Claude Code
+configuration, so the security posture is the same as running `claude` in a
+terminal — plus a microphone. Design rules the project follows:
+
+- **Audio never leaves your machine.** Recording (PipeWire) and transcription
+  (local Whisper) are fully local; only the transcribed *text* is sent to the
+  Claude API, exactly as if you had typed it.
+- **No recordings are kept.** Captured audio is a temp file deleted right after
+  transcription, and `.gitignore` blocks WAV files from ever being committed.
+- **Claude runs with its normal permission system.** The daemon invokes plain
+  `claude -p` and will never pass `--dangerously-skip-permissions`. Restrict
+  what a voice session may touch via `--allowedTools` in the daemon config.
+- **Per-user control surface.** The D-Bus name lives on the *session* bus, so
+  only your own logged-in session can trigger listening — nothing is exposed
+  system-wide or over the network.
+- **No secrets in this repo.** Configuration (model paths, claude args) lives
+  in `~/.config/hey-claude/`, session state in `~/.local/state/hey-claude/` —
+  both outside the source tree.
+
+Found a vulnerability? See [SECURITY.md](SECURITY.md).
+
 ## License
 
-Apache-2.0 (intended; not finalized).
+[Apache-2.0](LICENSE).
