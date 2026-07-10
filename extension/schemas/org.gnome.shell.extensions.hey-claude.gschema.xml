@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="hey-claude">
+  <schema id="org.gnome.shell.extensions.hey-claude"
+          path="/org/gnome/shell/extensions/hey-claude/">
+    <key name="toggle-shortcut" type="as">
+      <default>['&lt;Super&gt;backslash']</default>
+      <summary>Push-to-talk toggle</summary>
+      <description>
+        Start listening, stop listening, or interrupt Claude while speaking.
+      </description>
+    </key>
+  </schema>
+</schemalist>

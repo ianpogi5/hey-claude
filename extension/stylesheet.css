@@ -1,0 +1,5 @@
+/* indicator color per daemon state */
+.hc-recording    { color: #e01b24; }
+.hc-transcribing { color: #ff7800; }
+.hc-thinking     { color: #f6d32d; }
+.hc-speaking     { color: #3584e4; }

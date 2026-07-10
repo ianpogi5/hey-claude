@@ -20,9 +20,10 @@ loud. Low friction, desktop-native, everything local except the Claude API call.
    Installs clean on Python 3.14; `small`/int8 on CPU transcribes a short
    utterance in ~1.5 s with perfect accuracy (M1 test). Keep the model warm in
    the daemon to hide the ~2 s load. Revisit only if daemon RSS is a problem.
-2. **Keybinding mechanism** — extension-registered keybinding (simplest, works
-   today) vs XDG GlobalShortcuts portal (survives without the extension, more
-   moving parts). Start with the extension keybinding.
+2. **Keybinding mechanism** — ~~open~~ **Resolved: extension keybinding**
+   (`toggle-shortcut`, default `<Super>backslash` — `<Super>space` collides
+   with GNOME input-source switching). Portal shortcuts remain the fallback
+   if the extension ever lags a GNOME release.
 3. **Session model** — ~~open~~ **Resolved: both.** The daemon resumes the
    saved session by default; `NewConversation()` rotates it.
 4. **Interruption** — ~~open~~ **Resolved: barge-in.** `Toggle()` while
@@ -88,8 +89,14 @@ State machine: `idle → recording → transcribing → thinking → speaking �
   systemd user env lacks `~/.local/bin` so the claude binary is resolved
   explicitly. Silence auto-stop deferred to M4 (safety cap:
   `max_record_seconds`).
-- **M3 — extension.** Top-bar indicator + keybinding wired to the daemon.
-  This is the "it's a real app" moment.
+- **M3 — extension.** ✅ Done 2026-07-11: `extension/` (GJS ESM, GNOME 49) —
+  PanelMenu.Button with per-state icon+color, primary-click/keybinding →
+  `Toggle()`, menu (last exchange, New conversation, Cancel, Edit config,
+  Quit), D-Bus proxy with `DO_NOT_AUTO_START_AT_CONSTRUCTION` so login
+  doesn't spawn the daemon but the first action does. ~140 lines, zero
+  business logic. Verified ACTIVE with no JS errors in a nested headless
+  gnome-shell 49; enabled for the real session (visible after next login).
+  `scripts/install-extension.sh` installs + compiles schemas.
 - **M4 — polish.** Barge-in, transcript window/notifications, settings UI
   (or just the config file + a menu entry that opens it), packaging.
 

@@ -1,0 +1,9 @@
+{
+    "uuid": "hey-claude@kdc.org",
+    "name": "hey-claude",
+    "description": "Push-to-talk voice assistant for Claude Code: top-bar indicator and keybinding for the heyclauded daemon.",
+    "shell-version": ["49"],
+    "url": "https://github.com/ianpogi5/hey-claude",
+    "settings-schema": "org.gnome.shell.extensions.hey-claude",
+    "gettext-domain": "hey-claude"
+}

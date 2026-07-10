@@ -6,8 +6,8 @@ A small top-bar indicator (GNOME Shell extension) drives a background daemon tha
 records your voice, transcribes it locally, sends it to the `claude` CLI, and speaks
 the reply aloud with Piper TTS.
 
-**Status:** M2 — the daemon works: push-to-talk over D-Bus, systemd user
-service, config file. The GNOME top-bar extension (M3) is next. See
+**Status:** M3 — daemon + GNOME Shell extension work: top-bar mic icon,
+push-to-talk keybinding, barge-in. Polish (M4) remains. See
 [PLAN.md](PLAN.md).
 
 ## Why
@@ -81,12 +81,36 @@ gdbus call --session --dest org.kdc.HeyClaude \
     --object-path /org/kdc/HeyClaude --method org.kdc.HeyClaude.Toggle
 ```
 
-Until the GNOME extension (M3) lands, bind that command to a key: GNOME
-Settings → Keyboard → Custom Shortcuts, command
-`gdbus call --session --dest org.kdc.HeyClaude --object-path /org/kdc/HeyClaude --method org.kdc.HeyClaude.Toggle`,
-key e.g. `Super+Space`. You get a beep when it starts listening, a lower beep
-when it stops, and the answer is read aloud. Pressing the key while Claude is
-speaking interrupts and listens again (barge-in).
+You get a beep when it starts listening, a lower beep when it stops, and the
+answer is read aloud. Pressing the key while Claude is speaking interrupts
+and listens again (barge-in). You rarely need `gdbus` by hand though — install
+the extension:
+
+### GNOME Shell extension (GNOME 49)
+
+```bash
+./scripts/install-extension.sh
+```
+
+Log out and back in once (Wayland can't reload the shell), and you get:
+
+- a microphone icon in the top bar that changes with state —
+  red while recording, orange transcribing, yellow thinking, blue speaking;
+- **left-click** or **`Super+\`** = push-to-talk (start / stop / barge-in);
+- right-click menu: the last exchange, New conversation, Cancel,
+  Edit configuration, Quit daemon.
+
+Change the shortcut with:
+
+```bash
+gsettings --schemadir ~/.local/share/gnome-shell/extensions/hey-claude@kdc.org/schemas \
+    set org.gnome.shell.extensions.hey-claude toggle-shortcut "['<Super>backslash']"
+```
+
+(The default is `Super+\`; `Super+Space` is taken by GNOME's input-source
+switcher.) Without the extension — or on a GNOME release it hasn't been
+ported to yet — everything still works via `gdbus` and a GNOME custom
+keyboard shortcut bound to the Toggle command above.
 
 The rest of the interface, for scripts and the future extension:
 
