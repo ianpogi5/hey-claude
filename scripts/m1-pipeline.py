@@ -19,8 +19,25 @@ import tempfile
 import time
 from pathlib import Path
 
-PIPER = Path.home() / ".claude/tts/venv/bin/piper"
-PIPER_MODEL = Path.home() / ".claude/tts/en_US-amy-medium.onnx"
+def _find_piper() -> Path:
+    """Piper binary: $HEY_CLAUDE_PIPER, an existing ~/.claude/tts install,
+    or piper installed alongside this interpreter (pip install piper-tts)."""
+    if env := os.environ.get("HEY_CLAUDE_PIPER"):
+        return Path(env)
+    legacy = Path.home() / ".claude/tts/venv/bin/piper"
+    if legacy.exists():
+        return legacy
+    return Path(sys.executable).with_name("piper")
+
+
+def _find_piper_model() -> Path:
+    if env := os.environ.get("HEY_CLAUDE_PIPER_MODEL"):
+        return Path(env)
+    return Path.home() / ".claude/tts/en_US-amy-medium.onnx"
+
+
+PIPER = _find_piper()
+PIPER_MODEL = _find_piper_model()
 STATE_DIR = Path.home() / ".local/state/hey-claude"
 SESSION_FILE = STATE_DIR / "session-id"
 
@@ -143,6 +160,13 @@ def main() -> None:
     ap.add_argument("--wav", default=None,
                     help="skip recording and transcribe this WAV file")
     args = ap.parse_args()
+
+    if not PIPER.exists() or not PIPER_MODEL.exists():
+        sys.exit(
+            f"Piper TTS not found (binary: {PIPER}, voice: {PIPER_MODEL}).\n"
+            "Install it and/or set HEY_CLAUDE_PIPER / HEY_CLAUDE_PIPER_MODEL "
+            "— see README § Install."
+        )
 
     timings: list[tuple[str, float]] = []
 
