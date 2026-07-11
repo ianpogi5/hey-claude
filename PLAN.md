@@ -97,8 +97,24 @@ State machine: `idle → recording → transcribing → thinking → speaking �
   business logic. Verified ACTIVE with no JS errors in a nested headless
   gnome-shell 49; enabled for the real session (visible after next login).
   `scripts/install-extension.sh` installs + compiles schemas.
-- **M4 — polish.** Barge-in, transcript window/notifications, settings UI
-  (or just the config file + a menu entry that opens it), packaging.
+- **M4 — polish.** ✅ Core done 2026-07-11:
+  - **Streaming TTS** — `claude -p --output-format stream-json
+    --include-partial-messages`; a `SentenceSplitter` cleans and splits text
+    deltas incrementally, feeding one long-lived piper→paplay pipe (piper
+    speaks per input line). Measured: state hits `speaking` 8.4 s after Ask
+    vs waiting the full reply (~15–20 s+) before. Session id is captured from
+    the stream's `init` event, so `--resume` survives barge-in/Cancel.
+  - **Silence auto-stop** — energy VAD tails the growing WAV; stops
+    `silence_seconds` (default 1.5) after speech ends; `max_record_seconds`
+    stays as the cap. `silence_seconds = 0` restores manual-only.
+  - **Reply notifications** — extension shows each reply via `Main.notify`,
+    covering the spoken-truncation "rest is on screen" case.
+  - **Voice-session permissions** — headless `claude -p` can't prompt, so
+    tools must be allowlisted via `[claude] args` (documented in README +
+    example config; Ian's machine: MCP home-assistant + read-only tools,
+    `cwd = /home/ian` for the project-scoped MCP server).
+  - Remaining ideas (backlog): settings UI, extension zip for e.g.o.,
+    RPM/copr packaging, transcript history window.
 
 ## Risks
 

@@ -111,6 +111,12 @@ class HeyClaudeIndicator extends PanelMenu.Button {
         const short = text.length > 72 ? `${text.slice(0, 72)}…` : text;
         item.label.set_text(`${label}: ${short}`);
         item.visible = true;
+        // replies also land as a notification so long answers survive
+        // the spoken "the rest is on screen" truncation
+        if (who === 'claude') {
+            const body = text.length > 400 ? `${text.slice(0, 400)}…` : text;
+            Main.notify('Claude', body);
+        }
     }
 
     _openConfig() {

@@ -11,16 +11,24 @@ preload = true       # load the whisper model at startup, not first use
 [audio]
 target = ""              # pw-record --target (empty = default microphone)
 max_record_seconds = 60  # safety stop for a toggle you forgot about
+silence_seconds = 1.5    # auto-stop after this much silence once you've spoken (0 = off)
+silence_threshold = 0.015  # RMS level (0..1) below which audio counts as silence
 earcons = true           # feedback tones on listen/stop/error
 
 [claude]
 bin = "claude"
-# Extra args for every `claude -p` call. Restrict what a voice session may
-# touch, e.g.: args = ["--allowedTools", "mcp__home-assistant"]
+# Extra args for every `claude -p` call. Headless claude cannot show
+# permission prompts, so any tool you want usable by voice must be
+# allowlisted here — everything else is denied. A sane "MCP + read-only"
+# profile: args = ["--allowedTools", "mcp__home-assistant", "WebSearch",
+#                  "WebFetch", "Read", "Glob", "Grep"]
 args = []
-cwd = ""             # working directory for claude (empty = daemon's cwd)
+# Working directory for claude (empty = daemon's cwd, usually $HOME).
+# Project-scoped MCP servers are only visible when cwd is inside their project.
+cwd = ""
 
 [tts]
 piper = ""           # piper binary (default: $HEY_CLAUDE_PIPER, ~/.claude/tts, or venv)
 voice = ""           # voice .onnx path (default: $HEY_CLAUDE_PIPER_MODEL or ~/.claude/tts)
 speech_limit = 1200  # max characters spoken; longer replies get truncated
+stream = true        # start speaking as claude writes (false = wait for full reply)

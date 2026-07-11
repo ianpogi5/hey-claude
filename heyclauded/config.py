@@ -39,6 +39,8 @@ class Config:
     # [audio]
     audio_target: str = ""  # pw-record --target; empty = default source
     max_record_seconds: float = 60.0
+    silence_seconds: float = 1.5  # auto-stop after this much post-speech silence; 0 = off
+    silence_threshold: float = 0.015  # RMS (0..1) below which audio counts as silence
     earcons: bool = True
     # [claude]
     claude_bin: str = "claude"
@@ -48,6 +50,7 @@ class Config:
     piper_bin: str = field(default_factory=_default_piper)
     piper_voice: str = field(default_factory=_default_piper_voice)
     speech_limit: int = 1200
+    stream_tts: bool = True  # start speaking while claude is still writing
 
 
 # (section, key in file) -> Config attribute
@@ -58,6 +61,8 @@ _KEYMAP = {
     ("stt", "preload"): "preload_stt",
     ("audio", "target"): "audio_target",
     ("audio", "max_record_seconds"): "max_record_seconds",
+    ("audio", "silence_seconds"): "silence_seconds",
+    ("audio", "silence_threshold"): "silence_threshold",
     ("audio", "earcons"): "earcons",
     ("claude", "bin"): "claude_bin",
     ("claude", "args"): "claude_args",
@@ -65,6 +70,7 @@ _KEYMAP = {
     ("tts", "piper"): "piper_bin",
     ("tts", "voice"): "piper_voice",
     ("tts", "speech_limit"): "speech_limit",
+    ("tts", "stream"): "stream_tts",
 }
 
 

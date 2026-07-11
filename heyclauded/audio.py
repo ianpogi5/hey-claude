@@ -1,11 +1,16 @@
 """Microphone capture via pw-record (PipeWire), 16 kHz mono s16 WAV."""
 
+import array
 import asyncio
+import math
 import os
 import signal
 import tempfile
 
 from .config import Config
+
+_WAV_HEADER = 44  # pw-record (libsndfile) writes a plain PCM RIFF header
+_POLL = 0.2
 
 
 class Recorder:
@@ -44,6 +49,44 @@ class Recorder:
         if self._proc:
             path = await self.stop()
             _unlink(path)
+
+    async def wait_for_silence(self, silence_seconds: float, threshold: float) -> None:
+        """Return once `silence_seconds` of silence follows detected speech.
+
+        Tails the WAV file as pw-record grows it, RMS per poll interval.
+        Also returns if the capture stops underneath us; the caller bounds
+        the total wait (max_record_seconds).
+        """
+        path = self._path
+        offset = _WAV_HEADER
+        silent_for = 0.0
+        heard_speech = False
+        while self.active and path == self._path:
+            await asyncio.sleep(_POLL)
+            try:
+                with open(path, "rb") as f:
+                    f.seek(offset)
+                    data = f.read()
+            except OSError:
+                return
+            offset += len(data) - (len(data) % 2)
+            if len(data) < 2:
+                continue
+            if _rms(data) >= threshold:
+                heard_speech = True
+                silent_for = 0.0
+            elif heard_speech:
+                silent_for += _POLL
+                if silent_for >= silence_seconds:
+                    return
+
+
+def _rms(data: bytes) -> float:
+    """RMS of s16le samples, normalized to 0..1."""
+    samples = array.array("h", data[: len(data) - (len(data) % 2)])
+    if not samples:
+        return 0.0
+    return math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
 
 
 def _unlink(path: str) -> None:

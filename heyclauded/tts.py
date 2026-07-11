@@ -1,6 +1,7 @@
 """Speech output: Piper → paplay, plus tiny generated earcons for state feedback."""
 
 import asyncio
+import contextlib
 import json
 import logging
 import math
@@ -29,6 +30,12 @@ class Speaker:
 
     async def speak(self, text: str) -> None:
         """Synthesize and play; returns when playback ends or stop() is called."""
+        await self.start_stream()
+        await self.feed(text)
+        await self.finish()
+
+    async def start_stream(self) -> None:
+        """Open a piper→paplay pipeline that speaks each fed line in turn."""
         read_fd, write_fd = os.pipe()
         try:
             piper = await asyncio.create_subprocess_exec(
@@ -45,10 +52,24 @@ class Speaker:
             os.close(read_fd)
             os.close(write_fd)
         self._procs = [piper, play]
-        try:
-            piper.stdin.write(text.encode())
+
+    async def feed(self, sentence: str) -> None:
+        """Queue one utterance (piper synthesizes per input line)."""
+        piper = self._procs[0] if self._procs else None
+        if not piper or piper.returncode is not None:
+            return
+        piper.stdin.write(sentence.replace("\n", " ").encode() + b"\n")
+        with contextlib.suppress(ConnectionResetError, BrokenPipeError):
             await piper.stdin.drain()
-            piper.stdin.close()
+
+    async def finish(self) -> None:
+        """Signal end of input and wait for playback to complete."""
+        if not self._procs:
+            return
+        piper, play = self._procs
+        try:
+            if piper.returncode is None:
+                piper.stdin.close()
             await play.wait()
         finally:
             self.stop()

@@ -6,8 +6,9 @@ A small top-bar indicator (GNOME Shell extension) drives a background daemon tha
 records your voice, transcribes it locally, sends it to the `claude` CLI, and speaks
 the reply aloud with Piper TTS.
 
-**Status:** M3 — daemon + GNOME Shell extension work: top-bar mic icon,
-push-to-talk keybinding, barge-in. Polish (M4) remains. See
+**Status:** M4 — full pipeline works: top-bar mic icon, push-to-talk
+keybinding, barge-in, streaming speech (Claude is read aloud while it's
+still writing), silence auto-stop, reply notifications. See
 [PLAN.md](PLAN.md).
 
 ## Why
@@ -81,10 +82,12 @@ gdbus call --session --dest org.kdc.HeyClaude \
     --object-path /org/kdc/HeyClaude --method org.kdc.HeyClaude.Toggle
 ```
 
-You get a beep when it starts listening, a lower beep when it stops, and the
-answer is read aloud. Pressing the key while Claude is speaking interrupts
-and listens again (barge-in). You rarely need `gdbus` by hand though — install
-the extension:
+You get a beep when it starts listening, and it stops on its own about a
+second and a half after you stop talking (or press again to stop it
+yourself). The answer is spoken sentence-by-sentence while Claude is still
+writing, so speech starts seconds earlier than the full reply. Pressing the
+key while Claude is speaking interrupts and listens again (barge-in). You
+rarely need `gdbus` by hand though — install the extension:
 
 ### GNOME Shell extension (GNOME 49)
 
@@ -98,7 +101,9 @@ Log out and back in once (Wayland can't reload the shell), and you get:
   red while recording, orange transcribing, yellow thinking, blue speaking;
 - **left-click** or **`Super+\`** = push-to-talk (start / stop / barge-in);
 - right-click menu: the last exchange, New conversation, Cancel,
-  Edit configuration, Quit daemon.
+  Edit configuration, Quit daemon;
+- each reply also appears as a desktop notification, so answers longer than
+  the spoken limit ("the rest is on screen") are actually on screen.
 
 Change the shortcut with:
 
@@ -126,8 +131,24 @@ The rest of the interface, for scripts and the future extension:
 The first question after install downloads the Whisper `small` model
 (~460 MB) from Hugging Face; after that the model loads from disk at daemon
 start. Conversations persist across questions and daemon restarts (session id
-in `~/.local/state/hey-claude/session-id`); Claude Code's own permission
-prompts still apply to anything the session tries to do.
+in `~/.local/state/hey-claude/session-id`).
+
+### Letting the voice session use tools
+
+Headless `claude -p` cannot show permission prompts, so by default every
+tool call is denied and Claude will tell you it can't do things. Allowlist
+what a voice session may touch in `~/.config/hey-claude/config.toml` —
+for example MCP servers plus read-only tools:
+
+```toml
+[claude]
+args = ["--allowedTools", "mcp__home-assistant",
+        "WebSearch", "WebFetch", "Read", "Glob", "Grep"]
+```
+
+If your MCP server is configured for a specific project (check with
+`claude mcp list` in that directory), also point `cwd` at it. Restart the
+daemon (`systemctl --user restart hey-claude.service`) after editing.
 
 ### One-shot script (no daemon)
 

@@ -17,7 +17,7 @@ from . import BUS_NAME
 from .audio import Recorder
 from .claude import ClaudeError, ClaudeSession
 from .config import Config
-from .speech import clean_for_speech
+from .speech import SentenceSplitter, clean_for_speech
 from .stt import Transcriber
 from .tts import Speaker, earcon
 
@@ -90,8 +90,16 @@ class Daemon:
         self._auto_stop = asyncio.create_task(self._auto_stop_timer())
 
     async def _auto_stop_timer(self) -> None:
-        await asyncio.sleep(self.cfg.max_record_seconds)
-        log.info("max record time reached, stopping capture")
+        if self.cfg.silence_seconds > 0:
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    self.recorder.wait_for_silence(
+                        self.cfg.silence_seconds, self.cfg.silence_threshold),
+                    timeout=self.cfg.max_record_seconds)
+            log.info("silence (or max record time), stopping capture")
+        else:
+            await asyncio.sleep(self.cfg.max_record_seconds)
+            log.info("max record time reached, stopping capture")
         await self.stop_listening()
 
     async def stop_listening(self) -> None:
@@ -112,6 +120,8 @@ class Daemon:
         self._pipeline = asyncio.create_task(self._process(text=text))
 
     async def cancel(self) -> None:
+        if self._auto_stop and not self._auto_stop.done():
+            self._auto_stop.cancel()
         await self.recorder.abort()
         await self._cancel_pipeline()
         self._set_state(IDLE)
@@ -146,15 +156,39 @@ class Daemon:
 
             self._transcript("you", text)
             self._set_state(THINKING)
-            reply = await self.claude.ask(text)
+
+            # speak sentences as claude streams them; first sentence flips
+            # the state to speaking while claude may still be thinking
+            splitter = SentenceSplitter(self.cfg.speech_limit)
+            speaking = False
+
+            async def say(sentences: list[str]) -> None:
+                nonlocal speaking
+                for sentence in sentences:
+                    if not speaking:
+                        speaking = True
+                        await self.speaker.start_stream()
+                        self._set_state(SPEAKING)
+                    await self.speaker.feed(sentence)
+
+            async def on_text(chunk: str) -> None:
+                await say(splitter.feed(chunk))
+
+            reply = await self.claude.ask(
+                text, on_text if self.cfg.stream_tts else None)
             if self.iface:
                 self.iface.emit_properties_changed({"SessionId": self.claude.session_id})
             self._transcript("claude", reply)
 
-            speech = clean_for_speech(reply, self.cfg.speech_limit)
-            if speech:
-                self._set_state(SPEAKING)
-                await self.speaker.speak(speech)
+            if self.cfg.stream_tts:
+                await say(splitter.flush())
+                if speaking:
+                    await self.speaker.finish()
+            else:
+                speech = clean_for_speech(reply, self.cfg.speech_limit)
+                if speech:
+                    self._set_state(SPEAKING)
+                    await self.speaker.speak(speech)
             self._set_state(IDLE)
         except asyncio.CancelledError:
             self.claude.cancel()
@@ -162,10 +196,12 @@ class Daemon:
             raise
         except ClaudeError as e:
             log.error("claude failed: %s", e)
+            self.speaker.stop()
             self._beep("error")
             self._set_state(IDLE)
         except Exception:
             log.exception("pipeline failed")
+            self.speaker.stop()
             self._beep("error")
             self._set_state(IDLE)
 
