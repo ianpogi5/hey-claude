@@ -79,6 +79,8 @@ class ClaudeSession:
         """Returns (reply_or_error, ok, streamed_any_text)."""
         cmd = [self._bin, "-p", text, "--output-format", "stream-json",
                "--include-partial-messages", "--verbose"]
+        if self._cfg.voice_prompt:
+            cmd += ["--append-system-prompt", self._cfg.voice_prompt]
         if resume:
             cmd += ["--resume", resume]
         cmd += self._cfg.claude_args

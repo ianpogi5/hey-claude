@@ -46,6 +46,16 @@ class Config:
     claude_bin: str = "claude"
     claude_args: list[str] = field(default_factory=list)
     claude_cwd: str = ""
+    voice_prompt: str = (
+        "You are a hands-free voice assistant: the user's message was "
+        "transcribed from speech, and your reply will be read aloud by "
+        "text-to-speech. Answer like a person talking — brief, plain, and "
+        "conversational, usually one to three short sentences. No markdown, "
+        "bullets, headings, or code unless explicitly asked. Don't enumerate "
+        "options or add caveats unless asked; give the single best answer. "
+        "Say numbers, units, and names the way you'd speak them, and leave "
+        "out URLs, IDs, and file paths unless the user needs them."
+    )
     # [tts]
     piper_bin: str = field(default_factory=_default_piper)
     piper_voice: str = field(default_factory=_default_piper_voice)
@@ -67,6 +77,7 @@ _KEYMAP = {
     ("claude", "bin"): "claude_bin",
     ("claude", "args"): "claude_args",
     ("claude", "cwd"): "claude_cwd",
+    ("claude", "voice_prompt"): "voice_prompt",
     ("tts", "piper"): "piper_bin",
     ("tts", "voice"): "piper_voice",
     ("tts", "speech_limit"): "speech_limit",

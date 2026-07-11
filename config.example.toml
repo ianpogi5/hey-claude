@@ -26,6 +26,10 @@ args = []
 # Working directory for claude (empty = daemon's cwd, usually $HOME).
 # Project-scoped MCP servers are only visible when cwd is inside their project.
 cwd = ""
+# Appended to Claude's system prompt so replies sound spoken, not written.
+# Empty keeps the built-in default (brief, conversational, no markdown);
+# set your own text to change the voice's personality.
+voice_prompt = ""
 
 [tts]
 piper = ""           # piper binary (default: $HEY_CLAUDE_PIPER, ~/.claude/tts, or venv)
